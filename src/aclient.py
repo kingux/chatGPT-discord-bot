@@ -45,10 +45,6 @@ class aclient(discord.Client):
             return AsyncChatbot(config={"email": self.openAI_email, "password": self.openAI_password, "access_token": self.chatgpt_access_token, "model": self.openAI_gpt_engine, "paid": self.chatgpt_paid})
         elif self.chat_model == "OFFICIAL":
                 return Chatbot(api_key=self.openAI_API_key, engine=self.openAI_gpt_engine, system_prompt=prompt)
-        elif self.chat_model == "Bard":
-            return BardChatbot(session_id=self.bard_session_id)
-        elif self.chat_model == "Bing":
-            return EdgeChatbot(cookie_path='./cookies.json')
 
     async def send_message(self, message, user_message):
         if self.is_replying_all == "False":
@@ -67,10 +63,6 @@ class aclient(discord.Client):
                 response = f"{response}{await responses.official_handle_response(user_message, self)}"
             elif self.chat_model == "UNOFFICIAL":
                 response = f"{response}{await responses.unofficial_handle_response(user_message, self)}"
-            elif self.chat_model == "Bard":
-                response = f"{response}{await responses.bard_handle_response(user_message, self)}"
-            elif self.chat_model == "Bing":
-                response = f"{response}{await responses.bing_handle_response(user_message, self)}"
             char_limit = 1900
             if len(response) > char_limit:
                 # Split the response into smaller chunks of no more than 1900 characters each(Discord limit is 2000 per chunk)
@@ -144,10 +136,7 @@ class aclient(discord.Client):
                             response = f"{response}{await responses.official_handle_response(prompt, self)}"
                         elif self.chat_model == "UNOFFICIAL":
                             response = f"{response}{await responses.unofficial_handle_response(prompt, self)}"
-                        elif self.chat_model == "Bard":
-                            response = f"{response}{await responses.bard_handle_response(prompt, self)}"
-                        elif self.chat_model == "Bing":
-                            response = f"{response}{await responses.bing_handle_response(prompt, self)}"
+                            
                         channel = self.get_channel(int(discord_channel_id))
                         await channel.send(response)
                         logger.info(f"System prompt response:{response}")

@@ -4,7 +4,7 @@ import discord
 from random import randrange
 from src.aclient import client
 from discord import app_commands
-from src import log, art, personas, responses
+from src import log, personas, responses
 
 logger = log.setup_logger(__name__)
 
@@ -79,10 +79,6 @@ def run_discord_bot():
     @app_commands.choices(choices=[
         app_commands.Choice(name="Official GPT-3.5", value="OFFICIAL"),
         app_commands.Choice(name="Ofiicial GPT-4.0", value="OFFICIAL-GPT4"),
-        app_commands.Choice(name="Website ChatGPT-3.5", value="UNOFFICIAL"),
-        app_commands.Choice(name="Website ChatGPT-4.0", value="UNOFFICIAL-GPT4"),
-        app_commands.Choice(name="Bard", value="Bard"),
-        app_commands.Choice(name="Bing", value="Bing"),
     ])
 
     async def chat_model(interaction: discord.Interaction, choices: app_commands.Choice[str]):
@@ -97,16 +93,6 @@ def run_discord_bot():
             elif choices.value == "OFFICIAL-GPT4":
                 client.openAI_gpt_engine = "gpt-4"
                 client.chat_model = "OFFICIAL"
-            elif choices.value == "UNOFFICIAL":
-                client.openAI_gpt_engine = "gpt-3.5-turbo"
-                client.chat_model = "UNOFFICIAL"
-            elif choices.value == "UNOFFICIAL-GPT4":
-                client.openAI_gpt_engine = "gpt-4"
-                client.chat_model = "UNOFFICIAL"
-            elif choices.value == "Bard":
-                client.chat_model = "Bard"
-            elif choices.value == "Bing":
-                client.chat_model = "Bing"
             else:
                 raise ValueError("Invalid choice")
 
@@ -127,13 +113,6 @@ def run_discord_bot():
         await interaction.response.defer(ephemeral=False)
         if client.chat_model == "OFFICIAL":
             client.chatbot = client.get_chatbot_model()
-        elif client.chat_model == "UNOFFICIAL":
-            client.chatbot.reset_chat()
-            await client.send_start_prompt()
-        elif client.chat_model == "Bard":
-            client.chatbot = client.get_chatbot_model()
-            await client.send_start_prompt()
-        elif client.chat_model == "Bing":
             await client.chatbot.reset()
         await interaction.followup.send("> **INFO: I have forgotten everything.**")
         personas.current_persona = "standard"
@@ -171,110 +150,6 @@ https://github.com/Zero6992/chatGPT-discord-bot""")
 
         logger.info(
             "\x1b[31mSomeone needs help!\x1b[0m")
-
-    @client.tree.command(name="draw", description="Generate an image with the Dalle2 model")
-    async def draw(interaction: discord.Interaction, *, prompt: str):
-        if interaction.user == client.user:
-            return
-
-        username = str(interaction.user)
-        channel = str(interaction.channel)
-        logger.info(
-            f"\x1b[31m{username}\x1b[0m : /draw [{prompt}] in ({channel})")
-
-        await interaction.response.defer(thinking=True, ephemeral=client.isPrivate)
-        try:
-            path = await art.draw(prompt)
-
-            file = discord.File(path, filename="image.png")
-            title = f'> **{prompt}** - <@{str(interaction.user.mention)}' + '> \n\n'
-            embed = discord.Embed(title=title)
-            embed.set_image(url="attachment://image.png")
-
-            await interaction.followup.send(file=file, embed=embed)
-
-        except openai.InvalidRequestError:
-            await interaction.followup.send(
-                "> **ERROR: Inappropriate request 😿**")
-            logger.info(
-            f"\x1b[31m{username}\x1b[0m made an inappropriate request.!")
-
-        except Exception as e:
-            await interaction.followup.send(
-                "> **ERROR: Something went wrong 😿**")
-            logger.exception(f"Error while generating image: {e}")
-
-
-    @client.tree.command(name="switchpersona", description="Switch between optional chatGPT jailbreaks")
-    @app_commands.choices(persona=[
-        app_commands.Choice(name="Random", value="random"),
-        app_commands.Choice(name="Standard", value="standard"),
-        app_commands.Choice(name="Do Anything Now 11.0", value="dan"),
-        app_commands.Choice(name="Superior Do Anything", value="sda"),
-        app_commands.Choice(name="Evil Confidant", value="confidant"),
-        app_commands.Choice(name="BasedGPT v2", value="based"),
-        app_commands.Choice(name="OPPO", value="oppo"),
-        app_commands.Choice(name="Developer Mode v2", value="dev"),
-        app_commands.Choice(name="DUDE V3", value="dude_v3"),
-        app_commands.Choice(name="AIM", value="aim"),
-        app_commands.Choice(name="UCAR", value="ucar"),
-        app_commands.Choice(name="Jailbreak", value="jailbreak")
-    ])
-    async def switchpersona(interaction: discord.Interaction, persona: app_commands.Choice[str]):
-        if interaction.user == client.user:
-            return
-
-        await interaction.response.defer(thinking=True)
-        username = str(interaction.user)
-        channel = str(interaction.channel)
-        logger.info(
-            f"\x1b[31m{username}\x1b[0m : '/switchpersona [{persona.value}]' ({channel})")
-
-        persona = persona.value
-
-        if persona == personas.current_persona:
-            await interaction.followup.send(f"> **WARN: Already set to `{persona}` persona**")
-
-        elif persona == "standard":
-            if client.chat_model == "OFFICIAL":
-                client.chatbot.reset()
-            elif client.chat_model == "UNOFFICIAL":
-                client.chatbot.reset_chat()
-            elif client.chat_model == "Bard":
-                client.chatbot = client.get_chatbot_model()
-            elif client.chat_model == "Bing":
-                client.chatbot = client.get_chatbot_model()
-
-            personas.current_persona = "standard"
-            await interaction.followup.send(
-                f"> **INFO: Switched to `{persona}` persona**")
-
-        elif persona == "random":
-            choices = list(personas.PERSONAS.keys())
-            choice = randrange(0, 6)
-            chosen_persona = choices[choice]
-            personas.current_persona = chosen_persona
-            await responses.switch_persona(chosen_persona, client)
-            await interaction.followup.send(
-                f"> **INFO: Switched to `{chosen_persona}` persona**")
-
-
-        elif persona in personas.PERSONAS:
-            try:
-                await responses.switch_persona(persona, client)
-                personas.current_persona = persona
-                await interaction.followup.send(
-                f"> **INFO: Switched to `{persona}` persona**")
-            except Exception as e:
-                await interaction.followup.send(
-                    "> **ERROR: Something went wrong, please try again later! 😿**")
-                logger.exception(f"Error while switching persona: {e}")
-
-        else:
-            await interaction.followup.send(
-                f"> **ERROR: No available persona: `{persona}` 😿**")
-            logger.info(
-                f'{username} requested an unavailable persona: `{persona}`')
 
     @client.event
     async def on_message(message):
